@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Happy Birthday Elize! - From Neya</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #message-box {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            color: #ff69b4;
+            font-size: 18px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 2px solid #ff69b4;
+            display: none;
+            z-index: 10;
+            text-align: center;
+        }
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 30;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #ff69b4;
+            font-size: 36px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 105, 180, 0.6);
+        }
+        p {
+            font-size: 18px;
+            max-width: 500px;
+            line-height: 1.5;
+            color: #ffb6c1;
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+        .btn {
+            background: linear-gradient(135deg, #ff69b4, #ff1493);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(255, 20, 147, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 20, 147, 0.6);
+        }
+        #controls-hint {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+            z-index: 10;
+        }
+        /* Moved up to avoid phone bottom gesture bars */
+        #touch-controls {
+            position: absolute;
+            bottom: 40px;
+            width: 100%;
+            display: none;
+            justify-content: space-between;
+            padding: 0 25px;
+            box-sizing: border-box;
+            z-index: 15;
+            pointer-events: none;
+        }
+        .joy-btn {
+            width: 65px;
+            height: 65px;
+            background: rgba(255, 255, 255, 0.25);
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            pointer-events: auto;
+            touch-action: manipulation;
+        }
+        .joy-group {
+            display: flex;
+            gap: 12px;
+        }
+        /* Relocated Action Button to top-right to prevent covering the movement buttons */
+        #action-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #00ffcc;
+            color: #111;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            display: none;
+            z-index: 25;
+            box-shadow: 0 4px 15px rgba(0,255,204,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">Explore the Empty Room...</div>
+    <div id="message-box">✨ "Open the Door" ✨</div>
+    <button id="action-btn">Open Door 🚪</button>
+
+    <div id="controls-hint">Use Arrow Keys / WASD or Touch Buttons to walk around as a heart!</div>
+
+    <div id="touch-controls">
+        <div class="joy-group">
+            <div class="joy-btn" id="btn-left">◀</div>
+            <div class="joy-btn" id="btn-right">▶</div>
+        </div>
+        <div class="joy-group">
+            <div class="joy-btn" id="btn-up">▲</div>
+            <div class="joy-btn" id="btn-down">▼</div>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <h1>💖 Hello my beautiful Elize :3 💖</h1>
+        <p>This is Neya and I want you to start the game!</p>
+        <button class="btn" id="start-btn">Start Game ✨</button>
+    </div>
+
+    <!-- Include Three.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        let scene, camera, renderer, player, clock;
+        let gameActive = false;
+        let doorMesh, doorOpen = false;
+        let cakeGroup, confettiParticles = [], ledLights = [];
+        let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, KeyW: false, KeyS: false, KeyA: false, KeyD: false };
+        let touchMove = { x: 0, z: 0 };
+
+        const uiText = document.getElementById('ui');
+        const messageBox = document.getElementById('message-box');
+        const overlay = document.getElementById('overlay');
+        const startBtn = document.getElementById('start-btn');
+        const actionBtn = document.getElementById('action-btn');
+        const touchControls = document.getElementById('touch-controls');
+
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768) {
+            touchControls.style.display = 'flex';
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111115);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 10, 14);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            // Empty Room Floor
+            const floorGeo = new THREE.PlaneGeometry(30, 30);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x222228, roughness: 0.9 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Back Wall with precise doorway opening
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x33333d, roughness: 0.8 });
+            
+            const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(13.5, 15), wallMat);
+            leftWall.position.set(-8.25, 7.5, -15);
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(13.5, 15), wallMat);
+            rightWall.position.set(8.25, 7.5, -15);
+            scene.add(rightWall);
+
+            const topWall = new THREE.Mesh(new THREE.PlaneGeometry(3, 10), wallMat);
+            topWall.position.set(0, 10, -15);
+            scene.add(topWall);
+
+            createDoorAndSign();
+            createPartyRoom();
+
+            // Player Avatar: A 3D Heart Mesh (Rotated right-side up!)
+            player = createHeartPlayer();
+            player.position.set(0, 1.0, 8);
+            scene.add(player);
+            player.velocity = new THREE.Vector3();
+
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.code)) keys[e.code] = true; });
+            window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.code)) keys[e.code] = false; });
+
+            setupTouchHandlers();
+            startBtn.addEventListener('click', startGame);
+            actionBtn.addEventListener('click', toggleDoor);
+        }
+
+        function createHeartPlayer() {
+            const group = new THREE.Group();
+            
+            const x = 0, y = 0;
+            const heartShape = new THREE.Shape();
+            heartShape.moveTo( x + 0.5, y + 0.5 );
+            heartShape.bezierCurveTo( x + 0.5, y + 0.5, x + 0.4, y, x, y );
+            heartShape.bezierCurveTo( x - 0.6, y, x - 0.6, y + 0.7, x - 0.6, y + 0.7 );
+            heartShape.bezierCurveTo( x - 0.6, y + 1.1, x - 0.3, y + 1.54, x + 0.5, y + 1.9 );
+            heartShape.bezierCurveTo( x + 1.3, y + 1.54, x + 1.6, y + 1.1, x + 1.6, y + 0.7 );
+            heartShape.bezierCurveTo( x + 1.6, y + 0.7, x + 1.6, y, x + 1.0, y );
+            heartShape.bezierCurveTo( x + 0.7, y, x + 0.5, y + 0.5, x + 0.5, y + 0.5 );
+
+            const extrudeSettings = { depth: 0.6, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.15, bevelThickness: 0.15 };
+            const geometry = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+            geometry.center();
+
+            const mat = new THREE.MeshStandardMaterial({ color: 0xff1493, roughness: 0.2, metalness: 0.3, emissive: 0x440022 });
+            const heartMesh = new THREE.Mesh(geometry, mat);
+            
+            // FLIP THE HEART RIGHT-SIDE UP: rotate 180 degrees around X axis
+            heartMesh.rotation.x = Math.PI;
+
+            heartMesh.scale.set(1.2, 1.2, 1.2);
+            heartMesh.castShadow = true;
+            group.add(heartMesh);
+
+            return group;
+        }
+
+        function createDoorAndSign() {
+            const frameGroup = new THREE.Group();
+
+            const doorGeo = new THREE.BoxGeometry(3, 5, 0.2);
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.5 });
+            doorMesh = new THREE.Mesh(doorGeo, doorMat);
+            doorMesh.position.set(0, 2.5, -14.9);
+            doorMesh.castShadow = true;
+            
+            const doorPivot = new THREE.Group();
+            doorPivot.position.set(-1.5, 0, -14.9);
+            doorMesh.position.set(1.5, 2.5, 0);
+            doorPivot.add(doorMesh);
+            frameGroup.add(doorPivot);
+            window.doorPivot = doorPivot;
+
+            const signCanvas = document.createElement('canvas');
+            signCanvas.width = 256;
+            signCanvas.height = 128;
+            const ctx = signCanvas.getContext('2d');
+            ctx.fillStyle = '#fffae6';
+            ctx.fillRect(0, 0, 256, 128);
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#d4af37';
+            ctx.strokeRect(4, 4, 248, 120);
+            ctx.font = 'bold 24px Arial';
+            ctx.fillStyle = '#333333';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("OPEN THE", 128, 45);
+            ctx.fillText("DOOR 🚪", 128, 85);
+
+            const signTexture = new THREE.CanvasTexture(signCanvas);
+            const signGeo = new THREE.PlaneGeometry(2.2, 1.1);
+            const signMat = new THREE.MeshBasicMaterial({ map: signTexture });
+            const sign = new THREE.Mesh(signGeo, signMat);
+            sign.position.set(-3.2, 3.5, -14.8);
+            frameGroup.add(sign);
+
+            scene.add(frameGroup);
+        }
+
+        function createPartyRoom() {
+            const partyGroup = new THREE.Group();
+
+            const pFloor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x1a0933, roughness: 0.3 }));
+            pFloor.rotation.x = -Math.PI / 2;
+            pFloor.position.set(0, 0, -30);
+            partyGroup.add(pFloor);
+
+            const grid = new THREE.GridHelper(30, 15, 0xff69b4, 0x4a154b);
+            grid.position.set(0, 0.01, -30);
+            partyGroup.add(grid);
+
+            cakeGroup = new THREE.Group();
+            cakeGroup.position.set(0, 0, -30);
+
+            const t1 = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 1.5, 32), new THREE.MeshStandardMaterial({ color: 0xff69b4 }));
+            t1.position.y = 0.75;
+            t1.castShadow = true;
+            cakeGroup.add(t1);
+
+            const t2 = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 1.2, 32), new THREE.MeshStandardMaterial({ color: 0x00ffff }));
+            t2.position.y = 2.1;
+            t2.castShadow = true;
+            cakeGroup.add(t2);
+
+            const t3 = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 1.0, 32), new THREE.MeshStandardMaterial({ color: 0xffff00 }));
+            t3.position.y = 3.1;
+            t3.castShadow = true;
+            cakeGroup.add(t3);
+
+            for (let i = 0; i < 5; i++) {
+                const angle = (i / 5) * Math.PI * 2;
+                const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+                candle.position.set(Math.cos(angle) * 0.7, 3.9, Math.sin(angle) * 0.7);
+                cakeGroup.add(candle);
+
+                const flame = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
+                flame.position.set(Math.cos(angle) * 0.7, 4.4, Math.sin(angle) * 0.7);
+                cakeGroup.add(flame);
+            }
+
+            const cakeCanvas = document.createElement('canvas');
+            cakeCanvas.width = 512;
+            cakeCanvas.height = 128;
+            const cCtx = cakeCanvas.getContext('2d');
+            cCtx.fillStyle = '#ff1493';
+            cCtx.font = 'bold 38px Arial';
+            cCtx.textAlign = 'center';
+            cCtx.textBaseline = 'middle';
+            cCtx.fillText("HAPPY BIRTHDAY ELIZE", 256, 64);
+
+            const cakeTex = new THREE.CanvasTexture(cakeCanvas);
+            const cakeSign = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), new THREE.MeshBasicMaterial({ map: cakeTex, transparent: true }));
+            cakeSign.position.set(0, 2.1, 2.35);
+            cakeGroup.add(cakeSign);
+
+            partyGroup.add(cakeGroup);
+
+            const ledColors = [0xff0055, 0x00ffff, 0xffff00, 0x00ff66, 0xff69b4];
+            for (let i = 0; i < 10; i++) {
+                const light = new THREE.PointLight(ledColors[i % ledColors.length], 1.5, 15);
+                light.position.set((i % 2 === 0 ? -12 : 12), 6, -18 - (i * 1.5));
+                partyGroup.add(light);
+                ledLights.push(light);
+            }
+
+            const pGeo = new THREE.BufferGeometry();
+            const count = 400;
+            const positions = new Float32Array(count * 3);
+            for(let i = 0; i < count * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 26;
+                positions[i+1] = Math.random() * 12;
+                positions[i+2] = -16 - Math.random() * 26;
+            }
+            pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const pMat = new THREE.PointsMaterial({ size: 0.35, color: 0xff69b4, transparent: true, opacity: 0.8 });
+            const confetti = new THREE.Points(pGeo, pMat);
+            partyGroup.add(confetti);
+            confettiParticles.push(confetti);
+
+            scene.add(partyGroup);
+        }
+
+        function toggleDoor() {
+            doorOpen = !doorOpen;
+            if (doorOpen) {
+                window.doorPivot.rotation.y = -Math.PI / 1.5;
+                actionBtn.textContent = "Close Door 🚪";
+                uiText.textContent = "🎉 SURPRISE! Walk through the door! 🎉";
+                messageBox.style.display = 'block';
+                messageBox.innerHTML = "✨ HAPPY BIRTHDAY ELIZE! ✨";
+            } else {
+                window.doorPivot.rotation.y = 0;
+                actionBtn.textContent = "Open Door 🚪";
+                uiText.textContent = "Explore the Empty Room...";
+                messageBox.style.display = 'none';
+            }
+        }
+
+        function setupTouchHandlers() {
+            const bindTouch = (id, xDir, zDir) => {
+                const el = document.getElementById(id);
+                el.addEventListener('touchstart', (e) => { e.preventDefault(); touchMove.x = xDir; touchMove.z = zDir; });
+                el.addEventListener('touchend', (e) => { e.preventDefault(); touchMove.x = 0; touchMove.z = 0; });
+            };
+            bindTouch('btn-left', -1, 0);
+            bindTouch('btn-right', 1, 0);
+            bindTouch('btn-up', 0, -1);
+            bindTouch('btn-down', 0, 1);
+        }
+
+        function startGame() {
+            overlay.style.display = 'none';
+            gameActive = true;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            if (gameActive) {
+                let moveX = touchMove.x;
+                let moveZ = touchMove.z;
+
+                if (keys.ArrowLeft || keys.KeyA) moveX = -1;
+                if (keys.ArrowRight || keys.KeyD) moveX = 1;
+                if (keys.ArrowUp || keys.KeyW) moveZ = -1;
+                if (keys.ArrowDown || keys.KeyS) moveZ = 1;
+
+                const speed = 10;
+                player.velocity.x = moveX * speed;
+                player.velocity.z = moveZ * speed;
+
+                player.position.x += player.velocity.x * delta;
+                player.position.z += player.velocity.z * delta;
+
+                player.position.x = Math.max(-13, Math.min(13, player.position.x));
+
+                if (!doorOpen) {
+                    player.position.z = Math.max(-14.5, Math.min(13, player.position.z));
+                } else {
+                    if (player.position.z < -14.2 && (player.position.x < -1.5 || player.position.x > 1.5)) {
+                        player.position.x = Math.max(-1.5, Math.min(1.5, player.position.x));
+                    }
+                    player.position.z = Math.max(-42, Math.min(13, player.position.z));
+                }
+
+                // Gentle spinning animation for the heart player
+                player.rotation.y += delta * 1.5;
+
+                const distToDoor = player.position.distanceTo(new THREE.Vector3(0, player.position.y, -14));
+                if (distToDoor < 4.0) {
+                    actionBtn.style.display = 'block';
+                } else {
+                    actionBtn.style.display = 'none';
+                }
+
+                camera.position.x += (player.position.x - camera.position.x) * 5 * delta;
+                camera.position.z += ((player.position.z + 10) - camera.position.z) * 5 * delta;
+                camera.lookAt(player.position.x, 1, player.position.z);
+
+                if (doorOpen && cakeGroup) {
+                    cakeGroup.rotation.y += delta * 0.5;
+                }
+
+                confettiParticles.forEach(p => {
+                    const positions = p.geometry.attributes.position.array;
+                    for(let i = 1; i < positions.length; i += 3) {
+                        positions[i] -= delta * 3;
+                        if (positions[i] < 0) positions[i] = 12;
+                    }
+                    p.geometry.attributes.position.needsUpdate = true;
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
